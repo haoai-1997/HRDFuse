@@ -297,7 +297,7 @@ class Local_network(nn.Module):
         self.de_conv3 = ConvBnReLU_v2(64, 128, kernel_size=3, stride=1)
 
         # self.down = nn.Conv3d(512, 512 // 4, kernel_size=(8, 8, 1), stride=(8, 8, 1), padding=0) # for TP:256x256
-        self.down = nn.Conv3d(512, 512 // 4, kernel_size=(4, 4, 1), stride=(4, 4, 1), padding=0) # for 512x512
+        self.down = nn.Conv3d(512, 512 // 4, kernel_size=(4, 4, 1), stride=(4, 4, 1), padding=0) # for TP:128x128
 
         self.tangent_layer = miniViT.tangent_ViT(128, n_query_channels=128, patch_size=4,
                                                  dim_out=100,
