@@ -23,8 +23,7 @@ import supervision as L
 import spherical as S360
 from sync_batchnorm import convert_model
 import matplotlib.pyplot as plot
-from model.spherical_fusion import spherical_fusion
-# from model.spherical_fusion import *
+from model.HRDFuse import hrdfuse
 from ply import write_ply
 import csv
 from util import *
@@ -99,10 +98,6 @@ shutil.copy('train_fusion.py', result_view_dir)
 shutil.copy('model/spherical_fusion.py', result_view_dir)
 shutil.copy('model/ViT/miniViT.py', result_view_dir)
 shutil.copy('model/ViT/layers.py', result_view_dir)
-# shutil.copy('model/spherical_model_iterative.py', result_view_dir)
-# if os.path.exists('grid'):
-#    shutil.rmtree('grid')
-# -----------------------------------------
 
 # Random Seed -----------------------------
 random.seed(args.seed)
@@ -150,7 +145,7 @@ val_dataloader = torch.utils.data.DataLoader(
 # first network, coarse depth estimation
 # option 1, resnet 360
 num_gpu = torch.cuda.device_count()
-network = spherical_fusion(nrows=nrows, npatches=npatches_dict[nrows], patch_size=patch_size, fov=fov, min_val=min_val, max_val=max_val)
+network = hrdfuse(nrows=nrows, npatches=npatches_dict[nrows], patch_size=patch_size, fov=fov, min_val=min_val, max_val=max_val)
 # network = convert_model(network)
 
 # parallel on multi gpu
@@ -325,7 +320,6 @@ def main():
     global_step = 0
     global_val = 0
     best_accuracy = 1
-    # save the evaluation results into a csv file
     csv_filename = os.path.join(result_view_dir, 'logs/result_log.csv')
     fields = ['epoch', 'Abs Rel', 'Sq Rel', 'Lin RMSE', 'log RMSE', 'D1', 'D2', 'D3', 'lr']
     csvfile = open(csv_filename, 'w', newline='')
@@ -358,25 +352,12 @@ def main():
 
             # attention_weights = torch.ones_like(mask, dtype=torch.float32, device=mask.device)
             bin_loss = BinsChamferLoss()
-            criterion_ueff = SILogLoss()
             smooth_l1_loss = BerhuLoss()
             l1_loss=nn.L1Loss()
             depth_loss = smooth_l1_loss(equi_depth_outputs, depth, mask=mask.to(torch.bool))
 
-            depth_loss1 = smooth_l1_loss(local_depth_outputs, depth, mask=mask.to(torch.bool))
-
-            depth_loss2 = smooth_l1_loss(global_depth_outputs, depth, mask=mask.to(torch.bool))
-            # depth_loss = smooth_l1_loss(equi_depth_outputs , depth , mask=mask.to(torch.bool))
             l_chamfer = bin_loss(bin_erp_edges, depth)
-
-
-            # gt_normal = depth2normal_gpu(depth)
-            # pred_normal = depth2normal_gpu(equi_outputs)
-            # normal_loss = 1 - torch.mean(torch.sum((pred_normal * gt_normal * mask), dim=[1, 2, 3], keepdim=True) / mask.sum())
-            # gt_grad = imgrad_yx(depth)
-            # pred_grad = imgrad_yx(equi_outputs)
-            # grad_loss = L.direct.calculate_l1_loss(pred_grad, gt_grad, mask)
-            loss = depth_loss + 0.1 * l_chamfer #+ 0.5 *l_feature # + normal_loss * 0.2 + grad_loss * 0.05
+            loss = depth_loss + 0.1 * l_chamfer
 
             rgb_img = rgb.detach().cpu().numpy()
             depth_prediction = equi_depth_outputs.detach().cpu().numpy()
@@ -426,16 +407,11 @@ def main():
                                  batch_idx)
                 writer.add_image('error', colorize(vutils.make_grid(error[:2, ...].data, nrow=4, normalize=False)),
                                  batch_idx)
-                # writer.add_image('normal', vutils.make_grid(pred_normal[:2, ...].data, nrow=4, normalize=True), batch_idx)
-                # writer.add_image('normal gt', vutils.make_grid(gt_normal[:2, ...].data, nrow=4, normalize=True), batch_idx)
-                # writer.add_image('confidence mask', colorize(vutils.make_grid(weight[:8, ...].data, nrow=4, normalize=False)), batch_idx)
-                # writer.add_image('weight', colorize(vutils.make_grid(zero_weight[:4, ...].data, nrow=4, normalize=False)), batch_idx)
-                # writer.add_image('depth coarse', colorize(vutils.make_grid(coarse_outputs[:2, ...].data, nrow=4, normalize=False)), batch_idx)
-
+             
             loss.backward()
 
             optimizer.step()
-            # scheduler.step()
+
             total_train_loss += loss.item()
             total_depth_loss += depth_loss.item()
             total_chamfer_loss += l_chamfer.item()
