@@ -386,7 +386,7 @@ class Local_network(nn.Module):
         return tangent_bin_set, tangent_embedding_set, tangent_feature_set
 
 
-class spherical_fusion(nn.Module):
+class hrdFuse(nn.Module):
     def __init__(self, nrows=4, npatches=18, patch_size=(128, 256), fov=(80, 80), nbins=100, min_val=0.1, max_val=10, ):
         self.num_classes = nbins
         self.min_val = min_val
@@ -395,7 +395,7 @@ class spherical_fusion(nn.Module):
         self.npatches = npatches
         self.patch_size = patch_size
         self.fov = fov
-        super(spherical_fusion, self).__init__()
+        super(hrdFuse, self).__init__()
 
         self.global_network = Global_network()
         self.local_network = Local_network()
